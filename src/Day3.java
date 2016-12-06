@@ -17,20 +17,24 @@ public class Day3 {
         int answer = 0;
         ArrayList<Integer> numbers = new ArrayList<>();
         while ( scan.hasNext() ) numbers.add(scan.nextInt());
-        /* triples are at positions i, i + step, i + 2*step
-         * part a: step = 1
-         * part b: step = 3
+        /* The list of numbers is a sequence of blocks of the form
+         * a_1...a_step|b_1...b_step|c_1...c_step
+         * The triples in it are (a_i, b_i, c_i)
+         * In part a step = 1, in part b step = 3
          */
-        int step = 1;
-        boolean[] done = new boolean[numbers.size()];
-        for ( int k = 0; k + 2*step < numbers.size(); k++) {
-            if ( done[k] ) continue;
-            for ( int i = 0; i < 3; i++ ) {
-                sides[i] = numbers.get(k + i*step);
-                done[k + i*step] = true;
-            }
+        int step = 3;
+        int indexA = 1;
+        for ( int k = 0; k + 2*step < numbers.size(); ) {
+            for ( int i = 0; i < 3; i++ ) sides[i] = numbers.get(k + i*step);
             Arrays.sort(sides);
             if ( sides[0] + sides[1] > sides[2] ) answer++;
+            k++;
+            indexA++;
+            if ( indexA > step ) {
+                // We got to the b's, move forward
+                k += 2*step;
+                indexA = 1;
+            }
         }
         System.out.println(answer);
     }
