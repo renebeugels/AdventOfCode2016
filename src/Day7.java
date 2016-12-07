@@ -7,10 +7,12 @@ import java.util.TreeSet;
 public class Day7 {
     public static void main(String[] args) throws FileNotFoundException {
         Day7 problem = new Day7();
+        Scanner scan = new Scanner(new BufferedReader(new FileReader("input/day7.txt")));
+        int[] result = problem.solve(scan);
+        System.out.printf("totals TLS: %d SSL: %d\n", result[0], result[1]);
     }
 
-    public Day7() throws FileNotFoundException {
-        Scanner scan = new Scanner(new BufferedReader(new FileReader("input/day7.txt")));
+    public int[] solve(Scanner scan) {
         int totalTLS = 0, totalSSL = 0;
         TreeSet<String> abaSet = new TreeSet<>();
         TreeSet<String> babSet = new TreeSet<>();
@@ -29,7 +31,7 @@ public class Day7 {
             for ( String s: abaSet ) isSSL |= babSet.contains(new StringBuilder(s).reverse().toString());
             if ( isSSL ) totalSSL++;
         }
-        System.out.printf("totals TLS: %d SSL: %d\n", totalTLS, totalSSL);
+        return new int[] {totalTLS, totalSSL};
     }
 
     public boolean hasABBA(String s) {
