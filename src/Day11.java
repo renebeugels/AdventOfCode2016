@@ -13,22 +13,17 @@ public class Day11 {
     }
 
     public int solve(Scanner scan) {
-        ArrayList<String> items = new ArrayList<>();
-        State start = new State();
         int floor = 0;
         Pattern pattern = Pattern.compile("([-\\w]+) (microchip|generator)");
+        HashMap<String, Integer> floorMap = new HashMap<>();
         while ( scan.hasNext() ) {
             Matcher matcher = pattern.matcher(scan.nextLine());
-            while ( matcher.find()) {
-                start.mask[floor] |= 1 << items.size();
-                items.add(matcher.group(1));
-            }
+            while ( matcher.find()) floorMap.put(matcher.group(1), floor);
             floor++;
         }
-        int n = items.size();
-        Collections.sort(items);
-        // chips are now at odd positions, generators at even positions
-        for ( int i = 0; i < n; i += 2 ) generatorMask |= 1 << i;
+        State start = setup(floorMap);
+        start.canonical();
+
         HashMap<State, Integer> distance = new HashMap<>();
         LinkedList<State> todo = new LinkedList<>();
         distance.put(start, 0);
@@ -42,7 +37,6 @@ public class Day11 {
             int currentDistance = distance.get(s);
             if ( s.equals(goal) ) break;
             int mask = s.mask[s.elevator];
-            boolean alreadyMovedAPair = false;
             for ( int i = 0; i < n; i++ ) {
                 if ( (1 << i & mask) == 0 ) continue;
                 for ( int j = i; j < n; j++ ) {
@@ -57,7 +51,6 @@ public class Day11 {
                      * - aB : useless because b gets fried by A, but will be caught by mask check
                      * - AB : only allowed if there are no other generators X, but will be caught by mask check
                      */
-                    if ( alreadyMovedAPair ) continue;
                     for ( int nextElevator = s.elevator - 1; nextElevator <= s.elevator + 1; nextElevator += 2) {
                         if ( 0 <= nextElevator && nextElevator < NR_FLOORS) {
                             // Optimization: check new bitmasks before creating a new state
@@ -67,9 +60,9 @@ public class Day11 {
                             next.elevator = nextElevator;
                             next.mask[s.elevator] ^= delta;
                             next.mask[nextElevator] ^= delta;
+                            next.canonical();
                             if ( distance.put(next, currentDistance + 1) == null ) {
                                 todo.add(next);
-                                alreadyMovedAPair |= isPair;
                             }
                         }
                     }
@@ -82,7 +75,22 @@ public class Day11 {
         return distance.getOrDefault(goal, -1);
     }
 
+    private State setup(HashMap<String, Integer> floorMap) {
+        items = floorMap.keySet().stream().sorted().toArray(size -> new String[size]);
+        n = items.length;
+        // chips are now at odd positions, generators at even positions
+        for ( int i = 0; i < n; i += 2 ) generatorMask |= 1 << i;
+        // setup initial state
+        State start = new State();
+        for ( int i = 0; i < n; i++) {
+            start.mask[floorMap.get(items[i])] |= 1 << i;
+        }
+        return start;
+    }
+
+    String[] items;
     int generatorMask;
+    int n;
     /* Return true iff all items specified by the bitmask
      * can coexist together. That is possible if one of the
      * following conditions hold:
@@ -107,6 +115,54 @@ public class Day11 {
         public State(State s) {
             elevator = s.elevator;
             mask = Arrays.copyOf(s.mask, NR_FLOORS);
+        }
+
+        /* The state can be described by a list of tuples
+         * (floor chip, floor generator, element name).
+         * The distance to the final state (everything on top floor)
+         * does not depend on the element names. This means that two
+         * states are equivalent if their list of their floor pairs
+         * are the same. This can be done easily if the pairs are
+         * in sorted order. This method does that.
+         */
+        void canonical() {
+            Pair[] repr = representation();
+            Arrays.sort(repr);
+            Arrays.fill(mask, 0);
+
+            for ( int i = 0; i < repr.length; i++) {
+                mask[repr[i].generator] |= 1 << (2*i);
+                mask[repr[i].chip] |= 1 << (2*i+1);
+            }
+        }
+
+        Pair[] representation() {
+            Pair[] result = new Pair[n/2];
+            for ( int i = 0; i < n/2; i++) {
+                int gen = 0, chip = 0;
+                for ( int j = 0; j < NR_FLOORS; j++) {
+                    if ( (1<<(2*i) & mask[j]) != 0 ) gen = j;
+                    if ( (1<<(2*i+1) & mask[j]) != 0 ) chip = j;
+                }
+                result[i] = new Pair(gen,chip);
+            }
+            return result;
+        }
+
+        class Pair implements Comparable<Pair> {
+            int generator, chip;
+            public Pair(int g, int c) {
+                generator = g; chip = c;
+            }
+
+            @Override
+            public String toString() { return String.format("(%d, %d)", generator, chip); }
+
+            @Override
+            public int compareTo(Pair o) {
+                if ( generator != o.generator) return generator - o.generator;
+                return chip - o.chip;
+            }
         }
 
         @Override
